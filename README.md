@@ -8,4 +8,4 @@ Documentos:
 - PDF (documento explicativo del proyecto)
 
 Integrantes:
--Melanie Valverde.
+- Melanie Valverde.
