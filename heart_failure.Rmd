@@ -1,0 +1,231 @@
+---
+title: "PRAC2-tipologia"
+author: "Autor: Melanie Valverde"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+library(ggplot2)
+library(readr)
+library(dplyr)
+library(stringr)
+library(outliers)
+library(editrules)
+
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# # Cargamos el juego de datos
+heart_failure <- read.csv('https://archive.ics.uci.edu/ml/machine-learning-databases/00519/heart_failure_clinical_records_dataset.csv',stringsAsFactors = FALSE, header = T)
+names(heart_failure)[13] <- "death"
+
+# # Nombres de los atributos
+sapply(heart_failure, function(x) class(x))
+
+filas=dim(heart_failure)[1]
+
+```
+
+#Valores nulos
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+#no hay valores NA
+sum(is.na(heart_failure))
+colSums(is.na(heart_failure))
+
+colSums(heart_failure=="")
+
+sum(heart_failure==" ?")
+colSums(heart_failure==" ?")
+
+colSums(heart_failure==" ?")
+
+#AGRUPAMOS LAS EDADES
+
+library(readr)
+library(dplyr)
+library(stringr)
+library(outliers)
+library(editrules)
+
+# creamos rango de edad para una mejor visualización de los datos
+heart_failure$age <- as.integer(heart_failure$age)
+heart_failure<- heart_failure %>% mutate(ageGroup = ifelse(age <=30, "<=30",
+                                               ifelse(age>30 & age <=45, "30-45",
+                                                      ifelse(age>45 & age <=60,"45-60",
+                                                             ">60"))))
+heart_failure$ageGroup <- as.factor(heart_failure$ageGroup)
+
+df <- dplyr::select_if(heart_failure, is.numeric)
+
+#comprobamos la distribución de los atributos.
+
+library(nortest) 
+alpha = 0.05
+col.names = colnames(heart_failure)
+for (i in 1:ncol(heart_failure)) {
+  if (i == 1) cat("Variables que no siguen una distribución normal:\n") 
+    if (is.integer(heart_failure[,i]) | is.numeric(heart_failure[,i])) {
+      p_val = ad.test(heart_failure[,i])$p.value 
+      if (p_val < alpha) {
+        cat(col.names[i])
+        # Format output
+        if (i < ncol(heart_failure) - 1) cat(", ")
+        if (i %% 3 == 0) cat("\n") }
+} }
+
+#### HOMOGENEIDAD 
+
+#Debido a que poseemos una distribución que no es normal, optamos por aplicar el test de Fligner para evaluar la homogeneidad de las muestras
+
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+
+a <- heart_failure[heart_failure$smoking == 0,"death"]
+b <- heart_failure[heart_failure$smoking == 1,"death"]
+fligner.test(x = list(a,b))
+
+a1 <- heart_failure[heart_failure$sex == 0,"death"]
+b1 <- heart_failure[heart_failure$sex == 1,"death"]
+fligner.test(x = list(a1,b1))
+
+
+
+
+####CORRELACION
+
+library(zscorer)
+
+r <- cor(df, use="complete.obs")
+round(r,2)
+library(ggcorrplot)
+ggcorrplot(r)
+
+#convertimos las variables binarias a factor
+newattr <- c("anaemia", 
+              "diabetes", 
+              "high_blood_pressure", 
+              "sex", 
+              "smoking", 
+              "death")
+heart_failure[newattr] <- lapply(heart_failure[newattr], factor)
+
+#mostramos estadísticas de los atributos binarios relacionados con la clase death
+
+g1 <- ggplot(heart_failure, aes(ageGroup)) + geom_bar(aes(fill = death))
+g2 <- ggplot(heart_failure, aes(anaemia)) + geom_bar(aes(fill = death))
+g3 <- ggplot(heart_failure, aes(diabetes)) + geom_bar(aes(fill = death))
+g4 <- ggplot(heart_failure, aes(high_blood_pressure)) + geom_bar(aes(fill = death))
+g5 <- ggplot(heart_failure, aes(sex)) + geom_bar(aes(fill = death))
+g6 <- ggplot(heart_failure, aes(smoking)) + geom_bar(aes(fill = death))
+grid.arrange(g1, g2,g3, g4, g5, g6, nrow = 3)
+
+
+##VALORES EXTREMOS Y HOMOGENEIDAD 
+#podemos observar mediante la grafica de las cajas los valores que se alejan de los limites y además extraer información de los atributos con relación a la case death.
+
+boxplot.stats(heart_failure$age)$out
+
+a1 <- ggplot(heart_failure, aes(age, fill=death, colour = death))+geom_density(alpha=0.1, size=0.8)
+a2 <- ggplot(data = heart_failure, aes(x = heart_failure$death, y = heart_failure$age, colour = heart_failure$death)) +
+  geom_boxplot() +
+  geom_point() +
+  theme_bw() +
+  theme(legend.position = "none")
+grid.arrange(a1, a2, ncol = 2)
+
+boxplot.stats(heart_failure$ejection_fraction)$out
+b1 <- ggplot(heart_failure, aes(ejection_fraction, fill=death, colour = death))+geom_density(alpha=0.1, size=0.8)
+b2 <-ggplot(data = heart_failure, aes(x = heart_failure$death, y = heart_failure$ejection_fraction, colour = heart_failure$death)) +
+  geom_boxplot() +
+  geom_point() +
+  theme_bw() +
+  theme(legend.position = "none")
+grid.arrange(b1, b2, ncol = 2)
+
+boxplot.stats(heart_failure$serum_creatinine)$out
+c1 <- ggplot(heart_failure, aes(serum_creatinine, fill=death, colour = death))+geom_density(alpha=0.1, size=0.8)
+c2 <- ggplot(data = heart_failure, aes(x = heart_failure$death, y = heart_failure$serum_creatinine, colour = heart_failure$death)) +
+  geom_boxplot() +
+  geom_point() +
+  theme_bw() +
+  theme(legend.position = "none")
+grid.arrange(c1, c2, ncol = 2)
+
+boxplot.stats(heart_failure$serum_sodium)$out
+d1 <- ggplot(heart_failure, aes(serum_sodium, fill=death, colour = death))+geom_density(alpha=0.1, size=0.8)
+d2 <- ggplot(data = heart_failure, aes(x = heart_failure$death, y = heart_failure$serum_sodium, colour = heart_failure$death)) +
+  geom_boxplot() +
+  geom_point() +
+  theme_bw() +
+  theme(legend.position = "none")
+grid.arrange(d1, d2, ncol = 2)
+
+boxplot.stats(heart_failure$platelets)$out
+e1 <- ggplot(heart_failure, aes(platelets, fill=death, colour = death))+geom_density(alpha=0.1, size=0.8)
+e2 <-ggplot(data = heart_failure, aes(x = heart_failure$death, y = heart_failure$platelets, colour = heart_failure$death)) +
+  geom_boxplot() +
+  geom_point() +
+  theme_bw() +
+  theme(legend.position = "none")
+grid.arrange(e1, e2, ncol = 2)
+
+boxplot.stats(heart_failure$creatinine_phosphokinase)$out
+f1 <- ggplot(heart_failure, aes(creatinine_phosphokinase, fill=death, colour = death))+geom_density(alpha=0.1, size=0.8)
+f2 <-ggplot(data = heart_failure, aes(x = heart_failure$death, y = heart_failure$creatinine_phosphokinase, colour = heart_failure$death)) +
+  geom_boxplot() +
+  geom_point() +
+  theme_bw() +
+  theme(legend.position = "none")
+grid.arrange(f1, f2, ncol = 2)
+
+
+
+library(corrplot)
+
+array <- cor(heart_failure[,unlist(lapply(heart_failure, is.numeric))], use="pairwise", method="spearman")
+corrplot(array, method="number")
+
+
+### REGRESIÓN LOGISTICA
+#creamos los conjuntos de entrenamiento y test
+
+library(boot)
+
+df <- heart_failure[, -14]
+
+## usamos el 80% de las muestras
+smp_size <- floor(0.8 * nrow(df))
+
+set.seed(123)
+train_i <- sample(seq_len(nrow(df)), size = smp_size)
+
+train <- df[train_i, ]
+test  <- df[-train_i, ]
+
+# usamos glm para obtener el modelo - caso 1 incluyendo todos los atributos
+model <- glm(death ~ ., data = train, family = binomial)
+summary(model)
+
+#caso 2 - incluyendo los atributos significativos
+model2 <- glm(data = train, death ~ serum_creatinine + ejection_fraction, family = "binomial")
+summary(model2)
+
+#calculamos la efectividad de nuestro modelo
+
+dev2 <- model2$deviance
+nullDev2 <- model2$null.deviance
+modelChi2 <- nullDev2 - dev2
+modelChi2
+
+chidf2 <- model2$df.null - model2$df.residual
+chisq.prob2 <- 1 - pchisq(modelChi2, chidf2)
+chisq.prob2
+
+```
